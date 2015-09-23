@@ -63,7 +63,7 @@ $ ./turret.py --hosts --meta
   - allnewservers
   vars:
   - var: foo
-
+```
 
 ### License
 
