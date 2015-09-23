@@ -1,7 +1,7 @@
 # turret
 
 Turret is a cli tool to store the ansible inventory in mongodb instead of flat files.
-It plugs right into ansible as dynamic inventory, see [Dynamic Inventory][ansdyn] and [Developing Dynamic Inventory Sources].
+It plugs right into ansible as dynamic inventory, see [Dynamic Inventory][ansdyn] and [Developing Dynamic Inventory Sources][ansdyndev].
 
 
 ### Install 
