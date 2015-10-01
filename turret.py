@@ -154,7 +154,11 @@ class mongo:
                     if group in groups:
                         groups[group]['hosts'].append(host)
             if meta:
-                groups['_meta']['hostvars'].update({host: ith[MONGO_VARS]}) 
+                groups['_meta']['hostvars'].update({host: ith[MONGO_VARS]})
+                if MONGO_GROUPS in ith:
+                    groups['_meta']['hostvars'][host].update({'turret_groups': ith[MONGO_GROUPS]})
+                if MONGO_ALIAS in ith:
+                    groups['_meta']['hostvars'][host].update({'turret_alias': ith[MONGO_ALIAS]})
 
         return self.out(groups, OUT)
         
