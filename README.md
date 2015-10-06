@@ -65,6 +65,48 @@ $ ./turret.py --hosts --meta
   - var: foo
 ```
 
+### Mongo schema
+
+Example host:
+
+_id: server1.domain.com
+  alias:
+  - server1
+  groups:
+  - directadmin
+  - vps
+  vars:
+    ansible_ssh_host: 10.0.1.23
+    ansible_ssh_port: 22
+    ansible_ssh_user: root
+    directadmin_port: '2222'
+    nagios_description: 'server1'
+    nagios_parents: 'node1.domain.com'
+    varnish_backend_ip: 127.0.0.1
+    varnish_backend_port: 80
+    varnish_listen_ip: 10.0.1.23
+    varnish_listen_port: 6081
+
+Example group:
+- _id: webservers
+  children:
+  - wordpress
+  - magento
+  - shared
+  vars:
+    collectd_plugins_apache: true
+    nagios_check_disk_c: 3%
+    nagios_check_disk_dev: /dev/vda
+    nagios_check_disk_w: 5%
+
+
+
+### Contribution
+
+I'm not a experienced programmer, so suggestions and contributions are very welcome.
+
+
+
 ### License
 
 Apache
