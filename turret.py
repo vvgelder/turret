@@ -146,6 +146,8 @@ class mongo:
                     if MONGO_GROUPS in ith:
                         for group in ith[MONGO_GROUPS]:
                             if group in groups:
+                                if 'children' not in groups[group]:
+                                    groups[group]['children'] = []
                                 groups[group]['children'].append(alias)
 
 
