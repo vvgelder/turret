@@ -270,6 +270,22 @@ class mongo:
         else:
             self.logger.info("unable to find host %s" % hostname)
 
+    def host_rename(self, hostname, newname):
+        ''' rename host with new name '''
+        h = self._find_host(hostname)
+        
+        h['_id'] = newname;
+
+        try:
+            if self.hosts.insert(h):
+                if self.hosts.remove({'_id': hostname}):
+                    self.logger.info("Rename host %s to %s" % (hostname,newname))
+        except pymongo.errors.DuplicateKeyError:
+            self.logger.warning("Host %s already exists" % newname)
+        except StandardError as e:
+            self.logger.warning("Error renaming host %s to %s. Errno: #%s, Error: %s" % (hostname, newname, e.errno, e.strerror))
+        
+
     """ get hostvars for host, or with meta get all info for host """
     def hostvars(self, hostname, meta=False, filename=None, FORMAT="JSON"):
         
@@ -390,7 +406,19 @@ class mongo:
 
     def group_rename(self, groupname, newname):
         ''' rename group and update groups in host with new name '''
-        return "TODO"
+        ''' TODO: rename groups in hosts '''
+        g = self._find_group(groupname)
+        
+        g['_id'] = newname;
+
+        try:
+            if self.groups.insert(g):
+                if self.groups.remove({'_id': groupname}):
+                    self.logger.info("Rename group %s to %s" % (groupname,newname))
+        except pymongo.errors.DuplicateKeyError:
+            self.logger.warning("Group %s already exists" % newname)
+        except StandardError as e:
+            self.logger.warning("Error renaming group %s to %s. Errno: #%s, Error: %s" % (groupname, newname, e.errno, e.strerror))
         
     def listhosts(self, meta=False, OUT="JSON"):
         h  = self.hosts.find()
@@ -406,18 +434,21 @@ class mongo:
         return self.out(hosts, OUT)
 
 
-    def listgroups(self, meta=False, OUT="JSON"):
+    def listgroups(self, meta=False, FORMAT="JSON"):
         g = self.groups.find()
         
         groups = []
 
         for group in g:
             if meta:
+                group['hosts'] = []
+                for  h in self.hosts.find({ MONGO_GROUPS: { "$in": [group["_id"]]}}):
+                    group['hosts'].append(h["_id"])
                 groups.append(group)    
             else:
                 groups.append(group["_id"])
         
-        return self.out(groups, OUT)
+        print self.out(groups, FORMAT)
 
     ''' TODO: list groups in tree format '''
     def group_tree(self):
@@ -525,7 +556,7 @@ Add/Remove child from group:
         parser.add_argument("--add", action="store_true", help="Add host or group to inventory", dest="add")
         parser.add_argument("--remove", action="store_true", help="Remove host or group from inventory", dest="remove")
         parser.add_argument("--edit", action="store_true", help="Edit vars", dest="edit")
-        parser.add_argument("--rename", action="store", help="rename group", dest="newname") 
+        parser.add_argument("--rename", action="store", help="rename host or group", dest="newname") 
         parser.add_argument("--add-child", action="store", help="Add group as child of other group", dest="add_childgroup")
         parser.add_argument("--del-child", action="store", help="Add group as child of other group", dest="del_childgroup")
         parser.add_argument("--add-group", action="store", help="Add group to host", dest="add_group")
@@ -544,7 +575,7 @@ Add/Remove child from group:
         elif args.host_list:
             print self.listhosts(meta=args.inventory_meta, OUT=DEFAULT_FORMAT)
         elif args.group_list:
-            print self.listgroups(meta=args.inventory_meta, OUT=DEFAULT_FORMAT)
+            self.listgroups(meta=args.inventory_meta, FORMAT=DEFAULT_FORMAT)
         elif args.hostfile:
             self.create_hostfile()
         elif args.ansible_host:
@@ -560,6 +591,8 @@ Add/Remove child from group:
                 self.host_del_alias(args.ansible_host,args.del_alias)
             elif args.dump:
                 self.hostvars(args.ansible_host, FORMAT=DEFAULT_FORMAT, meta=False, filename=args.dump)
+            elif args.newname:
+                self.host_rename(args.ansible_host,args.newname)
             elif args.overwrite:
                 self.hostvars_update(args.ansible_host, FORMAT=DEFAULT_FORMAT, filename=args.overwrite)
             elif args.update:
