@@ -21,6 +21,12 @@ Choose YAML or JSON output to taste (argument --list always outputs in JSON, bec
 > export TURRET_FORMAT=YAML
 
 
+### text indexes in mongodb
+```sh
+db.hosts.createIndex({"$**": "text" }, { name: "hostIndex", background: true } )
+db.groups.createIndex({"$**": "text" }, { name: "groupIndex", background: true } )
+```
+
 ### show output for ansible: 
 ```sh
  turret --list

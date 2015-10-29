@@ -284,6 +284,17 @@ class mongo:
             self.logger.warning("Host %s already exists" % newname)
         except StandardError as e:
             self.logger.warning("Error renaming host %s to %s. Errno: #%s, Error: %s" % (hostname, newname, e.errno, e.strerror))
+
+    def hosts_search(self, search, FORMAT="JSON"):
+        ''' search in text index '''
+        hosts = self.hosts.find({ "$text": { "$search": search }})
+
+        if hosts:
+            for h in hosts:
+                print self.out(h, FORMAT)
+        else:
+            self.logger.info("unable to find hosts with search term: %s" % search)
+        
         
 
     """ get hostvars for host, or with meta get all info for host """
@@ -392,6 +403,17 @@ class mongo:
             if self._update_group(groupname, g):
                 self.logger.warning("Vars updated for group %s " % (groupname))
 
+    def groups_search(self, search, FORMAT="JSON"):
+        ''' search in text index '''
+        groups = self.groups.find({ "$text": { "$search": search }})
+
+        if groups:
+            for g in groups:
+                print self.out(g, FORMAT)
+        else:
+            self.logger.info("unable to find groups with search term: %s" % search)
+        
+
     def groupvars_edit(self, groupname, FORMAT="JSON"):
         import tempfile
 
@@ -420,7 +442,7 @@ class mongo:
         except StandardError as e:
             self.logger.warning("Error renaming group %s to %s. Errno: #%s, Error: %s" % (groupname, newname, e.errno, e.strerror))
         
-    def listhosts(self, meta=False, OUT="JSON"):
+    def listhosts(self, meta=False, FORMAT="JSON"):
         h  = self.hosts.find()
         
         hosts = []
@@ -431,7 +453,7 @@ class mongo:
             else:
                 hosts.append(host["_id"])
         
-        return self.out(hosts, OUT)
+        print self.out(hosts, FORMAT)
 
 
     def listgroups(self, meta=False, FORMAT="JSON"):
@@ -566,6 +588,7 @@ Add/Remove child from group:
         parser.add_argument("--dump", action="store", help="file to dump json to", dest="dump")
         parser.add_argument("--import", action="store", help="file to import json from", dest="overwrite")
         parser.add_argument("--update", action="store", help="file to update json from", dest="update")
+        parser.add_argument("--search", action="store", help="search in host or groups", dest="search")
         
         args = parser.parse_args()
 
@@ -573,9 +596,15 @@ Add/Remove child from group:
         if args.inventory_list:
             print self.list(meta=args.inventory_meta, OUT="JSON")
         elif args.host_list:
-            print self.listhosts(meta=args.inventory_meta, OUT=DEFAULT_FORMAT)
+            if args.search:
+                self.hosts_search(args.search, FORMAT=DEFAULT_FORMAT)
+            else:
+                self.listhosts(meta=args.inventory_meta, FORMAT=DEFAULT_FORMAT)
         elif args.group_list:
-            self.listgroups(meta=args.inventory_meta, FORMAT=DEFAULT_FORMAT)
+            if args.search:
+                self.groups_search(args.search, FORMAT=DEFAULT_FORMAT)
+            else:
+                self.listgroups(meta=args.inventory_meta, FORMAT=DEFAULT_FORMAT)
         elif args.hostfile:
             self.create_hostfile()
         elif args.ansible_host:
@@ -618,6 +647,8 @@ Add/Remove child from group:
                 self.groupvars_update(args.ansible_group, FORMAT=DEFAULT_FORMAT, filename=args.update, update=True)
             elif args.edit:
                 self.groupvars_edit(groupname=args.ansible_group, FORMAT=DEFAULT_FORMAT)
+            elif args.search:
+                self.search_groups(args.search, FORMAT=DEFAULT_FORMAT)
             elif args.newname:
                 self.group_rename(args.ansible_group,args.newname)
             elif args.remove:
