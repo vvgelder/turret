@@ -516,7 +516,7 @@ class mongo:
         from argparse import RawDescriptionHelpFormatter
 
         # Argument parsing
-        parser = argparse.ArgumentParser(description="Ansible dynamic inventory with mongodb", epilog="""
+        parser = argparse.ArgumentParser(add_help=False, description="Ansible dynamic inventory with mongodb", epilog="""
 Show inventory list for ansible:
     turret --list [--meta] 
 
@@ -566,18 +566,18 @@ Add/Remove child from group:
 
         """, formatter_class=RawDescriptionHelpFormatter)
         parser.add_argument("--list", action='store_true', help="list inventory", dest="inventory_list")
-        parser.add_argument("--meta", action='store_true', default=False, help="also return meta data", dest="inventory_meta")
-        parser.add_argument("--hosts", action='store_true', help="list hosts", dest="host_list")
+        parser.add_argument("-m","--meta", action='store_true', default=False, help="also return meta data", dest="inventory_meta")
+        parser.add_argument("-l", "--hosts", action='store_true', help="list hosts", dest="host_list")
         parser.add_argument("--groups", action='store_true', help="list groups", dest="group_list")
 
 
-        parser.add_argument("--host", action='store', help="Ansible inventory of a particular host", dest="ansible_host")
+        parser.add_argument("-h", "--host", action='store', help="Ansible inventory of a particular host", dest="ansible_host")
         parser.add_argument("--host-file", action='store_true', help="create hostfile from inventory", dest="hostfile")
-        parser.add_argument("--group", action='store', help="Ansible inventory of a particular group", dest="ansible_group")
+        parser.add_argument("-g", "--group", action='store', help="Ansible inventory of a particular group", dest="ansible_group")
 
         parser.add_argument("--add", action="store_true", help="Add host or group to inventory", dest="add")
         parser.add_argument("--remove", action="store_true", help="Remove host or group from inventory", dest="remove")
-        parser.add_argument("--edit", action="store_true", help="Edit vars", dest="edit")
+        parser.add_argument("-e", "--edit", action="store_true", help="Edit vars", dest="edit")
         parser.add_argument("--rename", action="store", help="rename host or group", dest="newname") 
         parser.add_argument("--add-child", action="store", help="Add group as child of other group", dest="add_childgroup")
         parser.add_argument("--del-child", action="store", help="Add group as child of other group", dest="del_childgroup")
