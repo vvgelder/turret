@@ -442,33 +442,35 @@ class mongo:
         except StandardError as e:
             self.logger.warning("Error renaming group %s to %s. Errno: #%s, Error: %s" % (groupname, newname, e.errno, e.strerror))
         
-    def listhosts(self, meta=False, FORMAT="JSON"):
+    def listhosts(self, meta=False, FORMAT="JSON", hidden=False):
         h  = self.hosts.find()
         
         hosts = []
 
         for host in h:
-            if meta:
-                hosts.append(host)    
-            else:
-                hosts.append(host["_id"])
+            if hidden or not host["_id"].startswith('_'):
+                if meta:
+                    hosts.append(host)    
+                else:
+                    hosts.append(host["_id"])
         
         print self.out(hosts, FORMAT)
 
 
-    def listgroups(self, meta=False, FORMAT="JSON"):
+    def listgroups(self, meta=False, FORMAT="JSON", hidden=False):
         g = self.groups.find()
         
         groups = []
 
         for group in g:
-            if meta:
-                group['hosts'] = []
-                for  h in self.hosts.find({ MONGO_GROUPS: { "$in": [group["_id"]]}}):
-                    group['hosts'].append(h["_id"])
-                groups.append(group)    
-            else:
-                groups.append(group["_id"])
+            if hidden or not group["_id"].startswith('_'):
+                if meta:
+                    group['hosts'] = []
+                    for  h in self.hosts.find({ MONGO_GROUPS: { "$in": [group["_id"]]}}):
+                        group['hosts'].append(h["_id"])
+                    groups.append(group)    
+                else:
+                    groups.append(group["_id"])
         
         print self.out(groups, FORMAT)
 
@@ -589,6 +591,7 @@ Add/Remove child from group:
         parser.add_argument("--import", action="store", help="file to import json from", dest="overwrite")
         parser.add_argument("--update", action="store", help="file to update json from", dest="update")
         parser.add_argument("--search", action="store", help="search in host or groups", dest="search")
+        parser.add_argument("-a", action="store_true", help="show hidden groups", dest="hidden")
         
         args = parser.parse_args()
 
@@ -599,12 +602,12 @@ Add/Remove child from group:
             if args.search:
                 self.hosts_search(args.search, FORMAT=DEFAULT_FORMAT)
             else:
-                self.listhosts(meta=args.inventory_meta, FORMAT=DEFAULT_FORMAT)
+                self.listhosts(meta=args.inventory_meta, FORMAT=DEFAULT_FORMAT, hidden=args.hidden)
         elif args.group_list:
             if args.search:
                 self.groups_search(args.search, FORMAT=DEFAULT_FORMAT)
             else:
-                self.listgroups(meta=args.inventory_meta, FORMAT=DEFAULT_FORMAT)
+                self.listgroups(meta=args.inventory_meta, FORMAT=DEFAULT_FORMAT, hidden=args.hidden)
         elif args.hostfile:
             self.create_hostfile()
         elif args.ansible_host:
