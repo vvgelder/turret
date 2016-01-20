@@ -270,7 +270,7 @@ class mongo:
         else:
             self.logger.info("unable to find host %s" % hostname)
 
-    def host_rename(self, hostname, newname):
+    def host_rename(self, hostname, newname, clone=False):
         ''' rename host with new name '''
         h = self._find_host(hostname)
         
@@ -278,7 +278,9 @@ class mongo:
 
         try:
             if self.hosts.insert(h):
-                if self.hosts.remove({'_id': hostname}):
+                if clone: 
+                    self.logger.info("Cloned host %s to %s" % (hostname,newname))
+                elif self.hosts.remove({'_id': hostname}):
                     self.logger.info("Rename host %s to %s" % (hostname,newname))
         except pymongo.errors.DuplicateKeyError:
             self.logger.warning("Host %s already exists" % newname)
@@ -426,7 +428,7 @@ class mongo:
             call([EDITOR, tempfile.name])
             self.groupvars_update(groupname, filename=tempfile.name, FORMAT=FORMAT)
 
-    def group_rename(self, groupname, newname):
+    def group_rename(self, groupname, newname, clone = False):
         ''' rename group and update groups in host with new name '''
         ''' TODO: rename groups in hosts '''
         g = self._find_group(groupname)
@@ -435,7 +437,9 @@ class mongo:
 
         try:
             if self.groups.insert(g):
-                if self.groups.remove({'_id': groupname}):
+                if clone:
+                    self.logger.info("Clone group %s to %s" % (groupname,newname))
+                elif self.groups.remove({'_id': groupname}):
                     self.logger.info("Rename group %s to %s" % (groupname,newname))
         except pymongo.errors.DuplicateKeyError:
             self.logger.warning("Group %s already exists" % newname)
@@ -581,6 +585,7 @@ Add/Remove child from group:
         parser.add_argument("--remove", action="store_true", help="Remove host or group from inventory", dest="remove")
         parser.add_argument("-e", "--edit", action="store_true", help="Edit vars", dest="edit")
         parser.add_argument("--rename", action="store", help="rename host or group", dest="newname") 
+        parser.add_argument("--clone", action="store", help="clone host or group", dest="clonename") 
         parser.add_argument("--add-child", action="store", help="Add group as child of other group", dest="add_childgroup")
         parser.add_argument("--del-child", action="store", help="Add group as child of other group", dest="del_childgroup")
         parser.add_argument("--add-group", action="store", help="Add group to host", dest="add_group")
@@ -625,6 +630,8 @@ Add/Remove child from group:
                 self.hostvars(args.ansible_host, FORMAT=DEFAULT_FORMAT, meta=False, filename=args.dump)
             elif args.newname:
                 self.host_rename(args.ansible_host,args.newname)
+            elif args.clonename:
+                self.host_rename(args.ansible_host,args.clonename, True)
             elif args.overwrite:
                 self.hostvars_update(args.ansible_host, FORMAT=DEFAULT_FORMAT, filename=args.overwrite)
             elif args.update:
@@ -654,6 +661,8 @@ Add/Remove child from group:
                 self.search_groups(args.search, FORMAT=DEFAULT_FORMAT)
             elif args.newname:
                 self.group_rename(args.ansible_group,args.newname)
+            elif args.clonename:
+                self.group_rename(args.ansible_group,args.clonename, True)
             elif args.remove:
                 self.remove_group(args.ansible_group)
             else:
