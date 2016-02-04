@@ -530,24 +530,28 @@ Show host variables for ansible (--meta for complete host object):
     turret --host <hostname> [--meta]
 
 Show hosts/groups
-    turret --hosts [--meta]
-    turret --groups [--meta]
+    turret --hosts|-S [--meta|-m] 
+    turret --groups|-G [--meta|-m] 
 
 Add/Remove host:
-    turret --host <hostname> --add
-    turret --host <hostname> --remove
+    turret --host|-s <hostname> --add|-a
+    turret --host|-s <hostname> --delete|-d
 
 Add/Remove alias to host:
-    turret --host <hostname> --add-alias <aliasname>
-    turret --host <hostname> --del-alias <aliasname>
+    turret --host|-s <hostname> --add-alias <aliasname>
+    turret --host|-s <hostname> --del-alias <aliasname>
 
 Add/Remove group to host:
-    turret --host <hostname> --add-group <groupname>
-    turret --host <hostname> --del-group <groupname>
+    turret --host|-s <hostname> --add-group <groupname>
+    turret --host|-s <hostname> --del-group <groupname>
+
+Rename/Clone host:
+    turret --host|-s <hostname> --clone|-c <hostname2>
+    turret --host|-s <hostname> --rename|-r <newhostname>
 
 Edit host/group vars:
-    turret --host <hostname> --edit
-    turret --group <groupname> --edit
+    turret --host|-s <hostname> --edit|-e
+    turret --group|-g <groupname> --edit|-e
 
 Dump host/group vars as json:
     turret --host <hostname> --dump-json <filename>
@@ -573,20 +577,20 @@ Add/Remove child from group:
         """, formatter_class=RawDescriptionHelpFormatter)
         parser.add_argument("--list", action='store_true', help="list inventory", dest="inventory_list")
         parser.add_argument("-m","--meta", action='store_true', default=False, help="also return meta data", dest="inventory_meta")
-        parser.add_argument("-l", "--hosts", action='store_true', help="list hosts", dest="host_list")
-        parser.add_argument("--groups", action='store_true', help="list groups", dest="group_list")
+        parser.add_argument("-S", "--hosts", action='store_true', help="list hosts", dest="host_list")
+        parser.add_argument("-G", "--groups", action='store_true', help="list groups", dest="group_list")
 
 
         parser.add_argument("-s", "--host", action='store', help="Ansible inventory of a particular host", dest="ansible_host")
         parser.add_argument("--host-file", action='store_true', help="create hostfile from inventory", dest="hostfile")
         parser.add_argument("-g", "--group", action='store', help="Ansible inventory of a particular group", dest="ansible_group")
 
-        parser.add_argument("--add", action="store_true", help="Add host or group to inventory", dest="add")
-        parser.add_argument("--remove", action="store_true", help="Remove host or group from inventory", dest="remove")
+        parser.add_argument("-a", "--add", action="store_true", help="Add host or group to inventory", dest="add")
+        parser.add_argument("-d", "--delete", action="store_true", help="Delete host or group from inventory", dest="remove")
         parser.add_argument("-e", "--edit", action="store_true", help="Edit vars", dest="edit")
         parser.add_argument("-x", "--export", action="store_true", help="Make export", dest="export")
-        parser.add_argument("--rename", action="store", help="rename host or group", dest="newname") 
-        parser.add_argument("--clone", action="store", help="clone host or group", dest="clonename") 
+        parser.add_argument("-r", "--rename", action="store", help="rename host or group", dest="newname") 
+        parser.add_argument("-c", "--clone", action="store", help="clone host or group", dest="clonename") 
         parser.add_argument("--add-child", action="store", help="Add group as child of other group", dest="add_childgroup")
         parser.add_argument("--del-child", action="store", help="Add group as child of other group", dest="del_childgroup")
         parser.add_argument("--add-group", action="store", help="Add group to host", dest="add_group")
@@ -597,7 +601,7 @@ Add/Remove child from group:
         parser.add_argument("--import", action="store", help="file to import json from", dest="overwrite")
         parser.add_argument("--update", action="store", help="file to update json from", dest="update")
         parser.add_argument("--search", action="store", help="search in host or groups", dest="search")
-        parser.add_argument("-a", action="store_true", help="show hidden groups", dest="hidden")
+        parser.add_argument("--all", action="store_true", help="show hidden groups", dest="hidden")
         
         args = parser.parse_args()
 
