@@ -522,7 +522,7 @@ class mongo:
         from argparse import RawDescriptionHelpFormatter
 
         # Argument parsing
-        parser = argparse.ArgumentParser(add_help=False, description="Ansible dynamic inventory with mongodb", epilog="""
+        parser = argparse.ArgumentParser(add_help=True, description="Ansible dynamic inventory with mongodb", epilog="""
 Show inventory list for ansible:
     turret --list [--meta] 
 
@@ -577,13 +577,14 @@ Add/Remove child from group:
         parser.add_argument("--groups", action='store_true', help="list groups", dest="group_list")
 
 
-        parser.add_argument("-h", "--host", action='store', help="Ansible inventory of a particular host", dest="ansible_host")
+        parser.add_argument("-s", "--host", action='store', help="Ansible inventory of a particular host", dest="ansible_host")
         parser.add_argument("--host-file", action='store_true', help="create hostfile from inventory", dest="hostfile")
         parser.add_argument("-g", "--group", action='store', help="Ansible inventory of a particular group", dest="ansible_group")
 
         parser.add_argument("--add", action="store_true", help="Add host or group to inventory", dest="add")
         parser.add_argument("--remove", action="store_true", help="Remove host or group from inventory", dest="remove")
         parser.add_argument("-e", "--edit", action="store_true", help="Edit vars", dest="edit")
+        parser.add_argument("-x", "--export", action="store_true", help="Make export", dest="export")
         parser.add_argument("--rename", action="store", help="rename host or group", dest="newname") 
         parser.add_argument("--clone", action="store", help="clone host or group", dest="clonename") 
         parser.add_argument("--add-child", action="store", help="Add group as child of other group", dest="add_childgroup")
@@ -615,6 +616,8 @@ Add/Remove child from group:
                 self.listgroups(meta=args.inventory_meta, FORMAT=DEFAULT_FORMAT, hidden=args.hidden)
         elif args.hostfile:
             self.create_hostfile()
+        elif args.export:
+            self.export()
         elif args.ansible_host:
             if args.add:
                 self.add_host(name=args.ansible_host)
