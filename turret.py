@@ -44,6 +44,12 @@ class mongo:
     def close(self):
         self.mgc.close()
 
+    ''' find alias in mongodb '''
+    def _find_alias(self, aliasname):
+        try:
+            return self.hosts.find_one({ MONGO_ALIAS: aliasname  })
+        except StandardError as e:
+            self.logger.warning("Error finding alias %s. Errno: #%s, Error: %s" % (aliasname, e.errno, e.strerror))
 
     ''' find host in mongodb '''
     def _find_host(self, hostname):
@@ -154,9 +160,11 @@ class mongo:
             if MONGO_GROUPS in ith:
                 for group in ith[MONGO_GROUPS]:
                     if group in groups:
+                        #print "add %s to group %s" % (host,group)
                         groups[group]['hosts'].append(host)
             if meta:
                 groups['_meta']['hostvars'].update({host: ith[MONGO_VARS]})
+                # add `magic_vars` turret_groups and turret_alias
                 if MONGO_GROUPS in ith:
                     groups['_meta']['hostvars'][host].update({'turret_groups': ith[MONGO_GROUPS]})
                 if MONGO_ALIAS in ith:
@@ -208,19 +216,24 @@ class mongo:
         h = self._find_host(hostname)
 
         if h:
-            groups = set(h[MONGO_GROUPS])
-            groups.add(groupname)
-            h[MONGO_GROUPS] = list(groups)
+            a = self._find_alias(groupname)
+            if not a:
+                groups = set(h[MONGO_GROUPS])
+                groups.add(groupname)
+                h[MONGO_GROUPS] = list(groups)
 
-            if self._update_host(hostname, h):
-                self.logger.info("Add group %s to %s" % (groupname,hostname))
+                if self._update_host(hostname, h):
+                    self.logger.info("Add group %s to %s" % (groupname,hostname))
 
-                """ if group not exist then automatic creation of group """
-                g = self._find_group(groupname)
-                if not g:
-                    self.add_group(groupname)
+                    """ if group not exist then automatic creation of group """
+                    g = self._find_group(groupname)
+                    if not g:
+                        self.logger.info("Auto created group %s" % groupname)
+                        self.add_group(groupname)
+            else:
+                self.logger.error("Alias with name %s already exists" % groupname)
         else:
-            self.logger.info("Unable to find host %s" % hostname)
+            self.logger.warning("Unable to find host %s" % hostname)
     
     ''' remove host from group ''' 
     def host_del_group(self, hostname, groupname):
@@ -244,16 +257,20 @@ class mongo:
         h = self._find_host(hostname)
 
         if h:
-            if MONGO_ALIAS not in h:
-                h[MONGO_ALIAS] = []
-            aliases = set(h[MONGO_ALIAS])
-            aliases.add(alias)
-            h[MONGO_ALIAS] = list(aliases)
+            g = self._find_group(alias)
+            if not g:
+                if MONGO_ALIAS not in h:
+                    h[MONGO_ALIAS] = []
+                aliases = set(h[MONGO_ALIAS])
+                aliases.add(alias)
+                h[MONGO_ALIAS] = list(aliases)
 
-            if self._update_host(hostname, h):
-                self.logger.info("Added alias %s to %s" % (alias, hostname))
+                if self._update_host(hostname, h):
+                    self.logger.info("Added alias %s to %s" % (alias, hostname))
+            else:
+                self.logger.error("There is already a group with the name %s " % (alias))
         else:
-            self.logger.info("Unable to find host %s" % hostname)
+            self.logger.error("Unable to find host %s" % hostname)
 
     ''' remove alias from host '''
     def host_del_alias(self, hostname, alias):
