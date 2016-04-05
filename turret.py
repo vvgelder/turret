@@ -7,6 +7,9 @@ import os
 import sys
 import yaml
 from subprocess import call
+from signal import signal, SIGPIPE, SIG_DFL
+
+signal(SIGPIPE, SIG_DFL)
 
 MONGO_GROUPS = 'groups'
 MONGO_VARS = 'vars'
@@ -192,22 +195,25 @@ class mongo:
             self.logger.warning("Unable to remove host %s" % hostname)
         
     ''' add group to inventory ''' 
-    def add_group(self, name, children=[], vars={}):
+    def add_group(self, groupname, children=[], vars={}):
         try:
-            self.groups.insert({ '_id': name, MONGO_VARS: vars, MONGO_CHILDREN: children })
-            return "Add group %s" % name
+            self.groups.insert({ '_id': groupname, MONGO_VARS: vars, MONGO_CHILDREN: children })
+            self.logger.info("Add group %s" % groupname)
         except pymongo.errors.DuplicateKeyError:
-            self.logger.warning("Group %s already exists" % name)
+            self.logger.warning("Group %s already exists" % groupname)
         except StandardError as e:
-            self.logger.warning("Error adding group %s. Errno: #%s, Error: %s" % (name, e.errno, e.strerror))
+            self.logger.warning("Error adding group %s. Errno: #%s, Error: %s" % (groupname, e.errno, e.strerror))
 
     ''' remove group from inventory '''
     def remove_group(self, groupname):
         try:
-            g = self.groups.remove({'_id': groupname})
-            return "Removed group %s" % groupname
-        except:
-            return "Unable to remove group %s" % groupname
+            self.groups.remove({'_id': groupname})
+
+            for h in self.hosts.find({ MONGO_GROUPS: { "$in": [groupname]}}):
+                self.host_del_group(h["_id"], groupname)
+            self.logger.info("Removed group %s" % groupname)
+        except StandardError as e:
+            self.logger.warning("Error removing group %s. Errno: #%s, Error: %s" % (groupname, e.errno, e.strerror))
         
     ''' add host to group '''
     def host_add_group(self, hostname, groupname):
@@ -246,7 +252,7 @@ class mongo:
             h[MONGO_GROUPS] = list(groups)
 
             if self._update_host(hostname, h):
-                self.logger.info("Remove group %s to %s" % (groupname,hostname))
+                self.logger.info("Remove group %s from %s" % (groupname,hostname))
         else:
             self.logger.info("Unable to find host %s" % hostname)
        
@@ -518,10 +524,15 @@ class mongo:
         for host in h:
             if  MONGO_VARS in host:
                 if 'ansible_ssh_host' in host[MONGO_VARS]:
-                    hosts[host[MONGO_VARS]['ansible_ssh_host']] = []
-                    hosts[host[MONGO_VARS]['ansible_ssh_host']].append(host['_id'])
+                    hostname = host[MONGO_VARS]['ansible_ssh_host']                
+                if 'ansible_host' in host[MONGO_VARS]:
+                    hostname = host[MONGO_VARS]['ansible_host']
+
+                if hostname:
+                    hosts[hostname] = []
+                    hosts[hostname].append(host['_id'])
                     if MONGO_ALIAS in host:
-                        hosts[host[MONGO_VARS]['ansible_ssh_host']].extend(host[MONGO_ALIAS])
+                        hosts[hostname].extend(host[MONGO_ALIAS])
         
         for i in hosts:
             print i + " " + " ".join(hosts[i])
@@ -668,7 +679,7 @@ Add/Remove child from group:
                 self.hostvars(args.ansible_host, FORMAT=DEFAULT_FORMAT, meta=args.inventory_meta)
         elif args.ansible_group:
             if args.add:
-                self.add_group(name=args.ansible_group)
+                self.add_group(args.ansible_group)
             elif args.dump:
                 self.groupvars(args.ansible_group, FORMAT=DEFAULT_FORMAT, meta=False, filename=args.dump)
             elif args.add_childgroup:
