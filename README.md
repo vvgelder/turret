@@ -13,6 +13,7 @@ cd turret
 sudo python setup.py install
 
 create config ~/.turretrc
+```sh
 ---
 mongo:
     user: "inventory"
@@ -23,6 +24,7 @@ mongo:
 pillbox:
     meta: True
     format: "YAML"
+```
 
 Instal mongodb server 
 > sudo apt-get install mongodb-server
