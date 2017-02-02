@@ -1,0 +1,98 @@
+#!/usr/bin/python
+
+from turret import config
+from turret import subnets
+import requests
+import netaddr
+import datetime
+import logging
+
+from scapy.all import srp, srploop, Ether, ARP, conf
+
+t = subnets.Subnets()
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s: %(levelname)s: %(message)s')
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
+subnets = t.searchDoc('subnets', { "discovery": True, "discoveryhost": 'localhost' }, {"_id": 1, "discoveryinterface": 1 })
+
+
+def arping(iprange="10.0.1.0/24", ipif='eth0'):
+
+    range = netaddr.IPNetwork(iprange)
+
+    for ip in range:
+
+        """Arping function takes IP Address or Network, returns nested mac/ip list"""
+
+        conf.verb = 0
+        ans, unans = srp(Ether(dst="ff:ff:ff:ff:ff:ff")/ARP(pdst=str(ip)), timeout=2, iface=ipif, inter=0.1)
+
+        #collection = []
+        for snd, rcv in ans:
+            result = rcv.sprintf(r"%ARP.psrc% %Ether.src%").split()
+            yield result
+
+
+def getVendor(mac):
+    MAC_URL = 'http://macvendors.co/api/%s'
+    return requests.get(MAC_URL % mac)
+
+for subnet in subnets:
+    print str(subnet['_id'])
+    for ip,mac in arping(str(subnet['_id']),str(subnet['discoveryinterface'])):
+        ipint = int(netaddr.IPAddress(ip))
+
+        # search current if record exists
+        previp = t.searchOneDoc('subnets', { 'hosts.ip{}.ip'.format(ipint): ip }, { 'hosts.ip{}'.format(ipint): 1 })
+        logger.info('Found mac {} for ip {}'.format(mac,ip))
+
+        # store ip and mac
+        if previp:
+            logger.info('ip already stored {}'.format(ip))
+            
+            doc = previp['hosts']['ip{}'.format(ipint)]
+
+            # just delete old date records and add firstseen, can be removed later
+            if 'date' in doc:
+                del doc['date']
+                doc['firstseen'] = datetime.datetime.utcnow()
+            doc['lastseen'] = datetime.datetime.utcnow() 
+
+            if doc['mac'] != mac:
+                logger.warning('mac changed for ip {} from {} to {}'.format(ip,doc['mac'],mac))
+                doc['oldmac'] = doc['mac']
+                doc['mac'] = mac
+            
+                if 'vendor' in doc:
+                    doc['oldvendor'] = doc['vendor']
+                    del doc['vendor']
+
+                vendor = getVendor(mac).json()
+                if 'company' in vendor['result']:
+                    company = vendor['result']['company']
+                    doc['vendor'] = company
+        else:
+            logger.info('Found new ip {}'.format(ip))
+
+            doc = {}
+            doc['ip'] = ip
+            doc['mac'] = mac
+            doc['firstseen'] = datetime.datetime.utcnow() 
+            vendor = getVendor(mac).json()
+            if 'company' in vendor['result']:
+                company = vendor['result']['company']
+                doc['vendor'] = company
+
+        # match ip with turret
+        host = t.searchOneDoc('hosts', { 'vars.ipv4_addressess': ip }, {'name': 1})
+        if host:
+            doc['id'] = host['_id']
+            doc['name'] = host['name']       
+            
+        t.updateDoc('subnets', search={ '_id': subnet['_id'] }, values={ '$set': { 'hosts.ip{}'.format(ipint): doc }})
+

@@ -4,21 +4,28 @@ Turret is a cli tool to store the ansible inventory in mongodb instead of flat f
 It plugs right into ansible as dynamic inventory, see [Dynamic Inventory][ansdyn] and [Developing Dynamic Inventory Sources][ansdyndev].
 
 
-### Install 
-Instal mongodb server (on ubuntu in this case) 
+### Install (ubuntu)
+
+git clone https://github.com/vvgelder/turret.git
+
+cd turret
+
+sudo python setup.py install
+
+create config ~/.turretrc
+---
+mongo:
+    user: "inventory"
+    password: "verysecretpassword"
+    host: "127.0.0.1"
+    port: 27017
+    database: "inventory"
+pillbox:
+    meta: True
+    format: "YAML"
+
+Instal mongodb server 
 > sudo apt-get install mongodb-server
-
-Let ansible use turret:
-> export ANSIBLE_HOSTS=/home/user/bin/turret.py
-
-Connection url for turret:
-> export TURRET_MONGOURL=mongodb://127.0.0.1:27017/inventory
-
-Set to yes to disable additional host lookups by ansible
-> export TURRET_METADEFAULT=Yes
-
-Choose YAML or JSON output to taste (argument --list always outputs in JSON, because that's what ansible expects)
-> export TURRET_FORMAT=YAML
 
 
 ### text indexes in mongodb
@@ -36,22 +43,23 @@ db.groups.createIndex({"$**": "text" }, { name: "groupIndex", background: true }
 
 ```sh
 # add new host:
-$ turret.py --host new.hostname.nl --add
+$ turret -s new.hostname.nl --add
 
 # edit host vars with your favorite editor defined in EDITOR environment variable:
-$ turret.py --host new.hostname.nl --edit
+$ turret -s new.hostname.nl -e
 
 # show all hosts with data:
-$ turret.py --hosts --meta
+$ turret -s -m
 - _id: new.hostname.nl
   groups: {}
   vars:
   - var: foo
 
-$ turret.py --host new.hostname.nl --add-alias new
+# add alias
+$ turret -s new.hostname.nl --add-alias new
 
-
-$ ./turret.py --hosts --meta
+# show all hosts
+$ turret -S -m
 - _id: new.hostname.nl
   alias:
   - new
@@ -59,23 +67,23 @@ $ ./turret.py --hosts --meta
   vars:
   - var: foo
 
-$ ./turret.py --host new.hostname.nl --add-group allnewservers
+$ turret -s new.hostname.nl --add-group allnewservers
 
-$ ./turret.py --hosts --meta
-- _id: new.hostname.nl
-  alias:
-  - new
-  groups:
-  - allnewservers
-  vars:
-  - var: foo
+# show group
+$ turret -g allnewservers
+
+# show all groups
+$ turret -G -m
+
+# add child group
+turret -g parent --add-child childgroup
 ```
 
 ### Mongo schema
 
 Example host:
 
-_id: server1.domain.com
+- name: server1.domain.com
   alias:
   - server1
   groups:
@@ -94,7 +102,7 @@ _id: server1.domain.com
     varnish_listen_port: 6081
 
 Example group:
-- _id: webservers
+- name: webservers
   children:
   - wordpress
   - magento

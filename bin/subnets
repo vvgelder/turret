@@ -1,0 +1,46 @@
+#!/usr/bin/python
+
+from prompter import yesno 
+from turret import subnets
+from signal import signal, SIGPIPE, SIG_DFL
+
+signal(SIGPIPE, SIG_DFL)
+
+def main():
+    import argparse
+    from argparse import RawDescriptionHelpFormatter
+
+    # Argument parsing
+    parser = argparse.ArgumentParser(add_help=True, description="Turret subnet management")
+    parser.add_argument("--list","-l", action='store_true', help="list subnets")
+    parser.add_argument("--meta","-m", action='store_true', default=False, help="show meta data")
+    parser.add_argument("--add","-a", action='store_true', default=False, help="add subnet")
+    parser.add_argument("--delete","-d", action='store_true', default=False, help="remove subnet")
+    parser.add_argument("--subnet","-s", action='store', help="subnet in CIDR format")
+    parser.add_argument("--host","-H", action='store', default='localhost', help="host for discovery")
+    parser.add_argument("--interface","-I", action='store', default='eth0', help="interface for discovery")
+    parser.add_argument("--gateway","-g", action='store', help="Gateway for this subnet")
+    parser.add_argument("--description", "-D", action='store', help="Description for this subnet")
+
+    args = parser.parse_args()
+
+    if args.list:
+        if args.meta:
+            projection = {'hosts': 1}
+        else:
+            projection = {'hosts': 0}
+        print t.subnetList(projection, format=True)
+    elif args.subnet:
+        if args.add:
+            t.subnetAdd(args.subnet, discoveryhost=args.host, discoveryinterface=args.interface, gateway=args.gateway, description=args.description)
+        elif args.delete:
+            if yesno('Are your sure you want to delete subnet {}?'.format(args.subnet)):
+                t.subnetDel(args.subnet)
+        else:
+            print t.subnet(args.subnet, meta=args.meta, format=True)
+
+if __name__ == "__main__":
+    t = subnets.Subnets()
+    main()
+
+

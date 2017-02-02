@@ -1,0 +1,25 @@
+#!/usr/bin/python
+
+from turret import turret 
+from signal import signal, SIGPIPE, SIG_DFL
+
+signal(SIGPIPE, SIG_DFL)
+
+def main():
+    import argparse
+    from argparse import RawDescriptionHelpFormatter
+
+    # Argument parsing
+    parser = argparse.ArgumentParser(add_help=True, description="Ansible dynamic inventory with mongodb")
+    parser.add_argument("--list", action='store_true', help="list servers")
+    parser.add_argument("--host", action='store', help="Ansible inventory of a particular host")
+
+    args = parser.parse_args()
+
+    print t.ansibleList(meta=True, format=True)
+
+if __name__ == "__main__":
+    t = turret.Turret()
+    # force json
+    t.outputformat="JSON"
+    main()

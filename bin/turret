@@ -1,0 +1,188 @@
+#!/usr/bin/env python
+
+from turret import turret
+from turret import console
+import argcomplete, argparse
+from argparse import RawDescriptionHelpFormatter
+import logging
+from signal import signal, SIGPIPE, SIG_DFL
+
+
+signal(SIGPIPE, SIG_DFL)
+
+def createHostfile(h):
+    hosts = {}
+
+    for host in h:
+        if  'vars' in host:
+            if 'ansible_ssh_host' in host['vars']:
+                hostname = host['vars']['ansible_ssh_host']
+            elif 'ansible_host' in host['vars']:
+                hostname = host['vars']['ansible_host']
+            else:
+                logger.error('Host {} has no ip'.format(host['name']))
+                hostname = None
+
+            if hostname:
+                if hostname in hosts:
+                    logger.error('Host {} has duplicate ip'.format(host['name']))
+                hosts[hostname] = []
+                hosts[hostname].append(host['name'])
+                if 'alias' in host:
+                    hosts[hostname].extend(host['alias'])
+
+    for i in hosts:
+        print i + " " + " ".join(hosts[i])
+        
+def main():
+    import argparse
+    from argparse import RawDescriptionHelpFormatter
+
+    # Argument parsing
+    parser = argparse.ArgumentParser(add_help=True, description="Ansible dynamic inventory with mongodb", epilog="""
+Show hosts/groups
+turret --hosts|-S [--meta|-m] 
+turret --groups|-G [--meta|-m] 
+
+Add/Remove host:
+turret --host|-s <hostname> --add|-a
+turret --host|-s <hostname> --delete|-d
+
+Add/Remove alias to host:
+turret --host|-s <hostname> --add-alias <aliasname>
+turret --host|-s <hostname> --del-alias <aliasname>
+
+Add/Remove group to host:
+turret --host|-s <hostname> --add-group <groupname>
+turret --host|-s <hostname> --del-group <groupname>
+
+Rename/Clone host:
+turret --host|-s <hostname> --clone|-c <hostname2>
+turret --host|-s <hostname> --rename|-r <newhostname>
+
+Edit host/group vars:
+turret --host|-s <hostname> --edit|-e
+turret --group|-g <groupname> --edit|-e
+
+Add/remove group:
+turret --group <groupname> --add
+turret --group <groupname> --remove
+
+Add/Remove child from group:
+turret --group <groupname> --add-child <groupname>
+turret --group <groupname> --del-child <groupname>
+
+
+    """, formatter_class=RawDescriptionHelpFormatter)
+    parser.add_argument("-m","--meta", action='store_true', default=False, help="also return meta data", dest="meta")
+    parser.add_argument("-S", "--hosts", action='store_true', help="list hosts", dest="hosts")
+    parser.add_argument("-G", "--groups", action='store_true', help="list groups", dest="groups")
+
+
+    parser.add_argument("-s", "--host", action='store', help="Ansible inventory of a particular host", dest="ansible_host")
+    parser.add_argument("--host-file", action='store_true', help="create hostfile from inventory", dest="hostfile")
+    parser.add_argument("-g", "--group", action='append', help="Ansible inventory of a particular group", dest="ansible_group")
+
+    parser.add_argument("-a", "--add", action="store_true", help="Add host or group to inventory", dest="add")
+    parser.add_argument("-d", "--delete", action="store_true", help="Delete host or group from inventory", dest="remove")
+    parser.add_argument("-e", "--edit", action="store_true", help="Edit vars", dest="edit")
+    parser.add_argument("-r", "--rename", action="store", help="rename host or group", dest="newname") 
+    parser.add_argument("-c", "--clone", action="store", help="clone host or group", dest="clonename") 
+    parser.add_argument("--add-child", action="store", help="Add group as child of other group", dest="add_childgroup")
+    parser.add_argument("--del-child", action="store", help="Add group as child of other group", dest="del_childgroup")
+    parser.add_argument("--add-group", action="store", help="Add group to host", dest="add_group")
+    parser.add_argument("--del-group", action="store", help="Add group to host", dest="del_group")
+    parser.add_argument("--add-alias", action="store", help="Add alias to host", dest="add_alias")
+    parser.add_argument("--del-alias", action="store", help="Add alias to host", dest="del_alias")
+    parser.add_argument("-l", "--all", action="store_true", help="show hidden groups", dest="hidden")
+    
+    args = parser.parse_args()
+
+    
+
+    if args.hosts:
+        projection = {'name': 1, '_id':0}
+        if args.meta:
+            projection = {'name': 1,'vars':1, 'groups': 1, 'alias': 1}
+        print t.hostList(projection=projection, format=True)
+    elif args.groups:
+        projection = {'name': 1, '_id':0}
+        if args.meta:
+            projection = {'name': 1,'vars':1, 'hosts': 1, 'children': 1}
+        print t.groupList(projection=projection, hidden=args.hidden, format=True)
+    elif args.hostfile:
+        h = t.hostList(projection={'name': 1,'vars': 1, 'alias': 1})
+        createHostfile(h)
+    elif args.ansible_host:
+        if args.add:
+            t.hostAdd(args.ansible_host)
+        elif args.add_group:
+            t.hostGroupAdd(args.ansible_host,args.add_group)
+        elif args.del_group:
+            t.hostGroupDel(args.ansible_host,args.del_group)
+        elif args.add_alias:
+            t.hostAliasAdd(args.ansible_host,args.add_alias)
+        elif args.del_alias:
+            t.hostAliasDel(args.ansible_host,args.del_alias)
+        elif args.newname:
+            if console.yesno('Are you sure you want to rename {} to {}'.format(args.host,args.target)):
+                t.hostRename(args.ansible_host,args.newname)
+        elif args.clonename:
+            if console.yesno('Are you sure you want to clone {} to {}'.format(args.host,args.target)):
+                t.hostClone(args.ansible_host,args.clonename)
+        elif args.edit:
+            h = t.findHost(args.ansible_host, {'name':1 ,'vars': 1}, format=False)
+            if h:
+                tmp = console.editor(t.format(h['vars'], format=True))
+                v = t.importFormat(tmp)
+                t.hostSetVars(args.ansible_host, v)
+                console.remove(tmp)
+        elif args.remove:
+            if console.yesno('Are you sure you want to delete host {}'.format(args.ansible_host)):
+                t.hostDel(args.ansible_host)
+        else:
+            projection = {'name': 1, 'vars': 1, '_id': 0}
+            if args.meta:
+                projection = {'name': 1,'vars':1, 'groups': 1, 'alias': 1}
+            print t.findHost(args.ansible_host, projection, format=True)
+    elif args.ansible_group:
+        if args.add:
+            self.add_group(args.ansible_group[0])
+        elif args.dump:
+            self.groupvars(args.ansible_group, FORMAT=DEFAULT_FORMAT, meta=False, filename=args.dump)
+        elif args.add_childgroup:
+            self.group_add_child(args.ansible_group[0],args.add_childgroup)
+        elif args.del_childgroup:
+            self.group_del_child(args.ansible_group[0],args.del_childgroup)
+        elif args.overwrite:
+            self.groupvars_update(args.ansible_group[0], FORMAT=DEFAULT_FORMAT, filename=args.overwrite)
+        elif args.update:
+            self.groupvars_update(args.ansible_group[0], FORMAT=DEFAULT_FORMAT, filename=args.update, update=True)
+        elif args.edit:
+            self.groupvars_edit(groupname=args.ansible_group[0], FORMAT=DEFAULT_FORMAT)
+#            elif args.search:
+#                self.search_groups(args.ansible_group, args.search, meta=args.inventory_meta,  FORMAT=DEFAULT_FORMAT)
+        elif args.newname:
+            self.group_rename(args.ansible_group[0],args.newname)
+        elif args.clonename:
+            self.group_rename(args.ansible_group[0],args.clonename, True)
+        elif args.remove:
+            self.remove_group(args.ansible_group[0])
+        else:
+            self.groupvars(args.ansible_group, FORMAT=DEFAULT_FORMAT, meta=args.inventory_meta)
+
+
+if __name__ == "__main__":
+    t = turret.Turret()
+
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s: %(levelname)s: %(message)s')
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+
+    main()
+
+
