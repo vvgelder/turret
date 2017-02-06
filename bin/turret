@@ -7,6 +7,9 @@ from argparse import RawDescriptionHelpFormatter
 import logging
 from signal import signal, SIGPIPE, SIG_DFL
 
+import sys
+from os.path import dirname
+sys.path.append("{}/lib/turret".format(dirname(__file__)))
 
 signal(SIGPIPE, SIG_DFL)
 
@@ -148,16 +151,10 @@ turret --group <groupname> --del-child <groupname>
     elif args.ansible_group:
         if args.add:
             self.add_group(args.ansible_group[0])
-        elif args.dump:
-            self.groupvars(args.ansible_group, FORMAT=DEFAULT_FORMAT, meta=False, filename=args.dump)
         elif args.add_childgroup:
             self.group_add_child(args.ansible_group[0],args.add_childgroup)
         elif args.del_childgroup:
             self.group_del_child(args.ansible_group[0],args.del_childgroup)
-        elif args.overwrite:
-            self.groupvars_update(args.ansible_group[0], FORMAT=DEFAULT_FORMAT, filename=args.overwrite)
-        elif args.update:
-            self.groupvars_update(args.ansible_group[0], FORMAT=DEFAULT_FORMAT, filename=args.update, update=True)
         elif args.edit:
             self.groupvars_edit(groupname=args.ansible_group[0], FORMAT=DEFAULT_FORMAT)
 #            elif args.search:
@@ -169,7 +166,10 @@ turret --group <groupname> --del-child <groupname>
         elif args.remove:
             self.remove_group(args.ansible_group[0])
         else:
-            self.groupvars(args.ansible_group, FORMAT=DEFAULT_FORMAT, meta=args.inventory_meta)
+            projection = {'name': 1, 'vars': 1, '_id': 0}
+            if args.meta:
+                projection = {'name': 1, 'vars': 1, 'children': 1, 'hosts': 1}
+            print t.findGroup(args.ansible_group, projection, format=True)
 
 
 if __name__ == "__main__":

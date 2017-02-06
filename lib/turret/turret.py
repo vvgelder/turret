@@ -299,8 +299,17 @@ class Turret(mongo.Mongo):
         return self.searchOneDoc('hosts', { 'alias': name  }, projection)
 
     @mongo.Format()
-    def findGroup(self, name, projection={}, format=False):
-        return self.searchOneDoc('groups', {'name': name}, projection)
+    def findGroup(self, search=False, projection={}, format=False):
+        if not search:
+            search = {}
+        elif not isinstance(search, dict):
+            search = {'name': search}
+        group = self.searchOneDoc('groups', search, projection)
+        if 'hosts' in projection:
+            group['hosts'] = []
+            for  h in self.searchDoc('hosts', {'groups': group["name"]},{"name": 1}):
+                group['hosts'].append(h["name"])
+        return group
 
     @mongo.Format()
     def hostvars(self, name, format=False):

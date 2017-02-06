@@ -38,7 +38,6 @@ setup(name='turret',
           'Topic :: Utilities',
       ],
       scripts=[
-         'bin/turret',
          'bin/turret-ansible',
          'bin/subnets',
          'bin/subnets-discovery',
