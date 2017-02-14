@@ -101,8 +101,6 @@ turret --group <groupname> --del-child <groupname>
     
     args = parser.parse_args()
 
-    
-
     if args.hosts:
         projection = {'name': 1, '_id':0}
         if args.meta:
@@ -149,16 +147,16 @@ turret --group <groupname> --del-child <groupname>
                 projection = {'name': 1,'vars':1, 'groups': 1, 'alias': 1}
             print t.findHost(args.ansible_host, projection, format=True)
     elif args.ansible_group:
+        groupname = args.ansible_group[0]
         if args.add:
-            self.add_group(args.ansible_group[0])
+            for groupname in args.ansible_group:
+                t.groupAdd(groupname)
         elif args.add_childgroup:
             self.group_add_child(args.ansible_group[0],args.add_childgroup)
         elif args.del_childgroup:
             self.group_del_child(args.ansible_group[0],args.del_childgroup)
         elif args.edit:
             self.groupvars_edit(groupname=args.ansible_group[0], FORMAT=DEFAULT_FORMAT)
-#            elif args.search:
-#                self.search_groups(args.ansible_group, args.search, meta=args.inventory_meta,  FORMAT=DEFAULT_FORMAT)
         elif args.newname:
             self.group_rename(args.ansible_group[0],args.newname)
         elif args.clonename:
@@ -166,10 +164,11 @@ turret --group <groupname> --del-child <groupname>
         elif args.remove:
             self.remove_group(args.ansible_group[0])
         else:
-            projection = {'name': 1, 'vars': 1, '_id': 0}
-            if args.meta:
-                projection = {'name': 1, 'vars': 1, 'children': 1, 'hosts': 1}
-            print t.findGroup(args.ansible_group, projection, format=True)
+            for groupname in args.ansible_group:
+                projection = {'name': 1, 'vars': 1, '_id': 0}
+                if args.meta:
+                    projection = {'name': 1, 'vars': 1, 'children': 1, 'hosts': 1, '_id': 0}
+                print t.findGroup(groupname, projection, format=True)
 
 
 if __name__ == "__main__":

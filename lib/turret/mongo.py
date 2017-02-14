@@ -56,7 +56,7 @@ class Format(object):
 
 class Mongo(object):
     
-    def __init__(self, logger=None):
+    def __init__(self, source='turret', logger=None):
 
         self.host = config.getcnf('mongo','host') 
         self.port = config.getcnf('mongo','port')
@@ -65,6 +65,7 @@ class Mongo(object):
         self.user = config.getcnf('mongo','user')
         self.password = config.getcnf('mongo','password')
         self.database = config.getcnf('mongo','database')
+        self.source = source
 
         self.logger = logger or logging.getLogger(__name__)
     

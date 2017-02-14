@@ -65,14 +65,14 @@ class Turret(mongo.Mongo):
         return groups
 
     # changemanagement log
-    def cmlogHost(self, hostname, logentry, source='turret', tags={}):
+    def cmlogHost(self, hostname, logentry, tags={}):
         h = self.findHost(hostname, {"name": 1})
         if h:
-            return self.cmlog(h, logentry, source, tags)
+            return self.cmlog(h, logentry, tags)
         return False
 
-    def cmlog(self, h, logentry, source='turret', tags={}):
-        return self.insertDoc('changemanagement', document={ 'hostid': h['_id'], 'hostname': h['name'], 'message': logentry, 'source': source, 'tags': tags, 'date': datetime.now().isoformat()})
+    def cmlog(self, h, logentry, tags={}):
+        return self.insertDoc('changemanagement', document={ 'hostid': h['_id'], 'hostname': h['name'], 'message': logentry, 'source': self.source, 'tags': tags, 'date': datetime.now().isoformat()})
 
 
     def hostAdd(self, hostname, doc = {'vars': {}, 'groups': [], 'alias': []}):
@@ -93,9 +93,9 @@ class Turret(mongo.Mongo):
             r = self.insertDoc('hosts', doc)
             if r:
                 self.logger.info("Add host {}".format(hostname))
-
+        
                 # log to changemanagement
-                self.cmlog(r, 'Host {} added to inventory'.format(h['name']))
+                self.cmlogHost(hostname, 'Host {} added to inventory'.format(hostname))
             return r
 
     def hostDel(self, hostname):
